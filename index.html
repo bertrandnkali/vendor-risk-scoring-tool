@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VendorRisk — Third-Party Risk Scoring v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --court:#0B0E11; --panel:#12171D; --panel2:#171E26; --line:#232C36;
+  --led:#4FD1FF; --led-dim:#175A6E; --hit:#37D67A; --miss:#FF5C5C; --ink:#E8EDF2; --mut:#7C8896;
+  --mono:'IBM Plex Mono',monospace; --disp:'Oswald',sans-serif; --body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--court);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;min-height:100vh;
+  background-image:radial-gradient(ellipse at 50% -10%, rgba(79,209,255,.06), transparent 55%)}
+header{border-bottom:1px solid var(--line);padding:20px 24px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+header h1{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.06em;text-transform:uppercase}
+header h1 span{color:var(--led)}
+header .tag{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 24px;max-width:1400px;margin:0 auto}
+.tabbtn{background:none;border:none;color:var(--mut);font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent}
+.tabbtn.active{color:var(--led);border-bottom-color:var(--led)}
+.tabbtn:hover{color:var(--ink)}
+.view{display:none}
+.view.active{display:block}
+.viewpad{max-width:1400px;margin:0 auto;padding:20px 24px 60px}
+main{display:grid;grid-template-columns:400px 1fr;gap:0;max-width:1400px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+.col-in{border-right:1px solid var(--line);padding:20px 24px 60px}
+@media(max-width:980px){.col-in{border-right:none;border-bottom:1px solid var(--line)}}
+.col-out{padding:20px 24px 60px}
+.sec{margin-bottom:26px}
+.sec h2{font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--led);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec h2 .pts{font-family:var(--mono);font-size:10px;color:var(--mut);letter-spacing:0;font-weight:400}
+label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 4px;font-weight:600}
+textarea,input[type=text],input[type=number],select{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none}
+textarea:focus,input:focus,select:focus{border-color:var(--led-dim)}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.hint{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.5}
+button.run{width:100%;margin-top:14px;background:var(--led);color:#04181f;border:none;font-family:var(--disp);font-weight:700;
+  font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:12px;border-radius:4px;cursor:pointer}
+button.run:hover{filter:brightness(1.08)}
+.subq{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin-bottom:8px}
+.subq label{margin-top:0}
+.board{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;margin-bottom:18px}
+.hd{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.bigscore{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.dial{font-family:var(--mono);font-weight:700;font-size:64px;line-height:1;color:var(--led);text-shadow:0 0 24px rgba(79,209,255,.35)}
+.dial small{font-size:20px;color:var(--mut);font-weight:400}
+.dial.risk-low{color:var(--hit)}
+.dial.risk-mod{color:var(--led)}
+.dial.risk-elev{color:#FFB020}
+.dial.risk-high{color:var(--miss)}
+.tier{font-family:var(--disp);font-size:20px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.stars{font-size:14px;color:var(--led);letter-spacing:.1em}
+.verdict{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.06em;padding:10px 14px;border-radius:4px;margin-top:14px}
+.verdict.approve{background:rgba(55,214,122,.12);color:var(--hit);border:1px solid rgba(55,214,122,.3)}
+.verdict.conditions{background:rgba(79,209,255,.1);color:var(--led);border:1px solid rgba(79,209,255,.3)}
+.verdict.escalate{background:rgba(255,176,32,.1);color:#FFB020;border:1px solid rgba(255,176,32,.3)}
+.verdict.decline{background:rgba(255,92,92,.1);color:var(--miss);border:1px solid rgba(255,92,92,.3)}
+.meter{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:14px}
+.meter i{display:block;height:100%;background:var(--led);border-radius:3px}
+.catrow{display:grid;grid-template-columns:1fr 90px 70px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed var(--panel2)}
+.catrow:last-child{border-bottom:none}
+.nm{font-size:13px;font-weight:600}
+.nm small{display:block;font-weight:400;color:var(--mut);font-size:11px;margin-top:2px}
+.catbar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.catbar i{display:block;height:100%;background:var(--led);border-radius:3px}
+.sc{font-family:var(--mono);font-size:12px;color:var(--mut);text-align:right}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+.stat .k{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font-family:var(--mono);font-size:18px;font-weight:600;margin-top:2px}
+.stat .v.pos{color:var(--hit)}
+.stat .v.neg{color:var(--miss)}
+.note{font-size:11px;color:var(--mut);margin-top:10px;line-height:1.5}
+.flag{background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.35);border-radius:4px;padding:10px 12px;margin-top:12px;
+  font-family:var(--mono);font-size:12px;color:var(--miss)}
+.empty{color:var(--mut);font-size:13px;padding:40px 0;text-align:center}
+table.pboard{width:100%;border-collapse:collapse;font-size:13px}
+table.pboard th{text-align:left;font-family:var(--mono);font-size:10px;color:var(--mut);text-transform:uppercase;
+  letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.pboard td{padding:9px 10px;border-bottom:1px dashed var(--line);font-family:var(--mono)}
+table.pboard tr:hover td{background:var(--panel2)}
+.badge{display:inline-block;padding:3px 9px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.04em}
+.badge.low{background:rgba(55,214,122,.18);color:var(--hit)}
+.badge.mod{background:rgba(79,209,255,.15);color:var(--led)}
+.badge.elev{background:rgba(255,176,32,.15);color:#FFB020}
+.badge.high{background:rgba(255,92,92,.15);color:var(--miss)}
+.rmbtn{background:none;color:var(--ink);cursor:pointer;font-family:var(--mono)}
+footer{max-width:1400px;margin:0 auto;padding:20px 24px 60px;color:var(--mut);font-size:11px;font-family:var(--mono)}
+.disclaimer{background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.25);border-radius:6px;padding:14px 16px;margin:16px 24px;
+  max-width:1352px;font-size:12px;color:#FFB020;font-family:var(--mono)}
+@media(max-width:980px){.disclaimer{margin:16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>VENDOR<span>RISK</span></h1>
+  <div class="tag">Third-Party Risk Scoring · 6 Categories · SIG-Lite Style Inputs · Portfolio Demo</div>
+</header>
+<div class="disclaimer">⚠ DEMO / PORTFOLIO PROJECT — all vendors, assessment histories, and sector benchmark figures below are synthetic and illustrative, not real companies or real industry statistics. This is a methodology demonstration, not a certified risk-rating product, and isn't connected to any live security-ratings feed.</div>
+
+<nav class="tabs">
+  <button class="tabbtn active" data-view="score">Score a Vendor</button>
+  <button class="tabbtn" data-view="batch">Batch Scan</button>
+  <button class="tabbtn" data-view="register">Vendor Register <span id="regCount" style="color:var(--mut)"></span></button>
+</nav>
+
+<div class="view active" id="view-score">
+<main>
+<div class="col-in">
+
+  <div class="sec">
+    <h2>Vendor</h2>
+    <label>Load example vendor</label>
+    <select id="vSelect"><option value="">— custom / manual entry —</option></select>
+    <div class="hint" id="vNote">Select a synthetic example to auto-fill every field below, or leave on manual entry and fill in your own.</div>
+  </div>
+
+  <div class="sec">
+    <h2>Cat 1+2 · Assessment History <span class="pts">45 pts</span></h2>
+    <label>Past assessment scores (0–100, most recent first)</label>
+    <textarea id="history" placeholder="88, 85, 82, 79, 76, 74"></textarea>
+    <div class="hint">Quarterly / point-in-time self-assessment or questionnaire scores. Drives Security Posture Trend (weighted recency) and Assessment Consistency (variance). Needs 2+ points; more is better.</div>
+  </div>
+
+  <div class="sec">
+    <h2>Cat 3 · Criticality &amp; Data Exposure <span class="pts">15 pts</span></h2>
+    <label>Data classification handled</label>
+    <select id="dataClass">
+      <option value="Public">Public</option>
+      <option value="Internal">Internal</option>
+      <option value="Confidential" selected>Confidential</option>
+      <option value="Restricted">Restricted (PII/PHI/PCI)</option>
+    </select>
+    <label>Business criticality / dependency</label>
+    <select id="criticality">
+      <option value="Low">Low — easily replaceable</option>
+      <option value="Medium" selected>Medium</option>
+      <option value="High">High</option>
+      <option value="Mission-Critical">Mission-critical — single point of failure risk</option>
+    </select>
+    <label>Single point of failure (no viable alternate vendor)</label>
+    <select id="spof"><option value="0">No</option><option value="1">Yes</option></select>
+  </div>
+
+  <div class="sec">
+    <h2>Cat 4 · Industry Benchmark <span class="pts">15 pts</span></h2>
+    <label>Sector</label>
+    <select id="sector"></select>
+    <div class="hint" id="sectorNote">Illustrative sector baseline — for comparing this vendor's own reported scores against a synthetic peer average.</div>
+  </div>
+
+  <div class="sec">
+    <h2>Cat 5 · Contractual Terms <span class="pts">15 pts</span></h2>
+    <div class="subq"><label>Cyber insurance in force</label>
+      <select id="insurance"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="subq"><label>Right-to-audit clause in contract</label>
+      <select id="audit"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="subq"><label>Liability cap adequate for exposure</label>
+      <select id="liabcap"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="subq"><label>Breach notification SLA</label>
+      <select id="sla"><option value="24">≤ 24 hours</option><option value="48">≤ 48 hours</option><option value="72">≤ 72 hours</option><option value="999">Not specified</option></select></div>
+  </div>
+
+  <div class="sec">
+    <h2>Cat 6 · Certification &amp; Disclosure <span class="pts">10 pts — kill condition</span></h2>
+    <div class="subq"><label>SOC 2 Type II (current, unexpired)</label>
+      <select id="soc2"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="subq"><label>ISO 27001 (or equivalent)</label>
+      <select id="iso27001"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="subq"><label>Open critical/high findings, unremediated</label>
+      <select id="critFindings"><option value="0">No</option><option value="1">Yes</option></select></div>
+    <div class="subq"><label>Disclosed breach in last 12 months</label>
+      <select id="breach12"><option value="0">No</option><option value="1">Yes</option></select></div>
+  </div>
+
+  <button class="run" id="run">Score This Vendor</button>
+</div>
+
+<div class="col-out" id="out">
+  <div class="empty">— AWAITING VENDOR DATA · SELECT OR ENTER FIELDS · SCORE —</div>
+</div>
+</main>
+</div>
+
+<!-- ============ BATCH SCAN ============ -->
+<div class="view" id="view-batch">
+  <div class="viewpad">
+    <div class="board">
+      <div class="hd">Score &amp; rank a vendor portfolio at once</div>
+      <label>Paste vendors — one per row, comma-separated</label>
+      <textarea id="batchCsv" style="min-height:180px" placeholder="vendor,sector,dataClass,criticality,spof,insurance,audit,liabcap,sla,soc2,iso27001,critFindings,breach12,history&#10;Nimbus Cloud Storage Inc.,SAAS,Confidential,High,1,1,1,1,24,1,1,0,0,88|85|82|79|76|74"></textarea>
+      <div class="hint">Columns: <b>vendor, sector, dataClass, criticality, spof, insurance, audit, liabcap, sla, soc2, iso27001, critFindings, breach12, history</b>. Booleans are 1/0. <b>history</b> is pipe-separated (<code>|</code>), most recent first. If <b>vendor</b> exactly matches one of the built-in example vendors, its other fields auto-fill and you only need to include the columns you want to override.</div>
+      <button class="run" id="scoreSlate">Score &amp; Rank Portfolio</button>
+    </div>
+    <div id="batchOut"><div class="empty">Paste a vendor list above and hit "Score &amp; Rank Portfolio."</div></div>
+  </div>
+</div>
+
+<!-- ============ VENDOR REGISTER ============ -->
+<div class="view" id="view-register">
+  <div class="viewpad">
+    <div class="board">
+      <div class="hd" style="display:flex;justify-content:space-between;align-items:center">
+        <span>SAVED ASSESSMENTS</span>
+        <button class="rmbtn" id="clearRegister" style="border:1px solid var(--line);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-size:11px">Clear all</button>
+      </div>
+      <div id="registerBody"><div class="empty">No assessments saved yet. Score a vendor, then hit "Save to Vendor Register."</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ DATA: illustrative sector benchmarks (synthetic, not real industry statistics) ============ */
+const SECTORS=[
+  {c:"SAAS",n:"Cloud / SaaS Platform",typicalScore:78},
+  {c:"FIN",n:"Payment Processing / FinTech",typicalScore:82},
+  {c:"HEALTH",n:"Healthcare / HIPAA-Covered",typicalScore:71},
+  {c:"MSP",n:"Managed IT / MSP",typicalScore:74},
+  {c:"PROF",n:"Professional Services",typicalScore:76},
+  {c:"MFG",n:"Manufacturing / OT",typicalScore:68},
+  {c:"LOG",n:"Logistics / Supply Chain",typicalScore:70},
+];
+
+/* ============ DATA: synthetic example vendors ============ */
+const VENDORS=[
+  {n:"Nimbus Cloud Storage Inc.",sector:"SAAS",dataClass:"Confidential",criticality:"High",spof:1,
+   insurance:1,audit:1,liabcap:1,sla:24,soc2:1,iso27001:1,critFindings:0,breach12:0,
+   history:[88,85,82,79,76,74]},
+  {n:"Vertex Payment Solutions",sector:"FIN",dataClass:"Restricted",criticality:"Mission-Critical",spof:1,
+   insurance:1,audit:1,liabcap:1,sla:24,soc2:1,iso27001:1,critFindings:0,breach12:0,
+   history:[91,90,92,89,90]},
+  {n:"Brightline Health Analytics",sector:"HEALTH",dataClass:"Restricted",criticality:"High",spof:0,
+   insurance:0,audit:0,liabcap:0,sla:72,soc2:0,iso27001:0,critFindings:1,breach12:0,
+   history:[58,64,71,68,74]},
+  {n:"Anchor Managed IT Services",sector:"MSP",dataClass:"Internal",criticality:"Medium",spof:0,
+   insurance:1,audit:1,liabcap:0,sla:48,soc2:1,iso27001:0,critFindings:0,breach12:1,
+   history:[70,75,60,72,68]},
+  {n:"Meridian Consulting Group",sector:"PROF",dataClass:"Internal",criticality:"Low",spof:0,
+   insurance:1,audit:0,liabcap:1,sla:999,soc2:0,iso27001:0,critFindings:0,breach12:0,
+   history:[80,78,79,77]},
+  {n:"Foundry Logistics Systems",sector:"LOG",dataClass:"Confidential",criticality:"Medium",spof:0,
+   insurance:1,audit:1,liabcap:1,sla:48,soc2:1,iso27001:0,critFindings:0,breach12:0,
+   history:[76,73,70,68,65]},
+];
+
+function $(id){return document.getElementById(id);}
+function findVendor(n){return VENDORS.find(v=>v.n===n);}
+
+/* ---- populate dropdowns ---- */
+(function(){
+  const sel=$('vSelect');
+  VENDORS.forEach(v=>{
+    const o=document.createElement('option'); o.value=v.n; o.textContent=v.n+' ('+v.sector+')';
+    sel.appendChild(o);
+  });
+  const ssel=$('sector');
+  SECTORS.forEach(s=>{
+    const o=document.createElement('option'); o.value=s.c; o.textContent=s.n;
+    ssel.appendChild(o);
+  });
+})();
+
+function loadVendor(){
+  const v=findVendor($('vSelect').value);
+  const note=$('vNote');
+  if(!v){ note.textContent='Select a synthetic example to auto-fill every field below, or leave on manual entry and fill in your own.'; return; }
+  $('history').value=v.history.join(', ');
+  $('dataClass').value=v.dataClass; $('criticality').value=v.criticality; $('spof').value=v.spof;
+  $('sector').value=v.sector; $('insurance').value=v.insurance; $('audit').value=v.audit;
+  $('liabcap').value=v.liabcap; $('sla').value=v.sla; $('soc2').value=v.soc2;
+  $('iso27001').value=v.iso27001; $('critFindings').value=v.critFindings; $('breach12').value=v.breach12;
+  note.innerHTML='<span style="color:var(--hit)">Loaded '+v.history.length+' assessment periods for '+v.n+'</span>';
+}
+$('vSelect').addEventListener('change',loadVendor);
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const sd=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length-1));};
+
+/* ============ SHARED SCORER — real TPRM logic, used by both Score-a-Vendor and Batch Scan ============ */
+function scoreVendor(o){
+  // o = {history, sectorCode, dataClass, criticality, spof, insurance, audit, liabcap, sla, soc2, iso27001, critFindings, breach12}
+  const h=o.history;
+  const seg=n=>h.slice(0,Math.min(n,h.length));
+  const L2=seg(2),L4=seg(4),L8=seg(8),All=seg(h.length);
+
+  /* ---- Cat 1: Security Posture Trend (25) — from weighted assessment history ---- */
+  let wsum=0,w=0;
+  [[L2,.4],[L4,.3],[L8,.2],[All,.1]].forEach(([a,wt])=>{if(a.length){wsum+=mean(a)*wt;w+=wt;}});
+  const weighted=w?wsum/w:0;
+  const c1a=clamp((weighted/100)*20,0,20);
+  const older=All.length>L2.length?mean(All.slice(L2.length)):weighted;
+  const trendPct=older?(mean(L2)-older)/older:0;
+  const c1b=clamp(trendPct*50,-5,5);
+  const C1=clamp(c1a+c1b,0,25);
+
+  /* ---- Cat 2: Assessment Consistency (20) — variance across history ---- */
+  const sAll=sd(All), mAll=mean(All);
+  const cv=mAll?sAll/mAll:0;
+  const C2 = h.length>=2 ? clamp(20-cv*40,2,20) : 10;
+
+  /* ---- Cat 3: Criticality & Data Exposure (15) ---- */
+  const dataClassPts={Public:7,Internal:5,Confidential:3,Restricted:1}[o.dataClass]??3;
+  const critPts={Low:6,Medium:4,High:2,"Mission-Critical":0}[o.criticality]??4;
+  const spofPenalty=o.spof?2:0;
+  const C3=clamp(dataClassPts+critPts-spofPenalty,0,15);
+
+  /* ---- Cat 4: Industry Benchmark (15) ---- */
+  const sector=SECTORS.find(s=>s.c===o.sectorCode);
+  let C4=7.5;
+  if(sector){
+    const recent=h.length?h[0]:sector.typicalScore;
+    const diff=recent-sector.typicalScore;
+    C4=clamp(7.5+diff*0.3,0,15);
+  }
+
+  /* ---- Cat 5: Contractual Terms (15) ---- */
+  const slaPts=o.sla<=24?3:o.sla<=48?2:o.sla<=72?1:0;
+  const C5=clamp((o.insurance?4:0)+(o.audit?4:0)+(o.liabcap?4:0)+slaPts,0,15);
+
+  /* ---- Cat 6: Certification & Disclosure (10) — kill condition lives here ---- */
+  const C6=clamp((o.soc2?4:0)+(o.iso27001?3:0)+(!o.critFindings?2:0)+(!o.breach12?1:0),0,10);
+  const noCert = !o.soc2 && !o.iso27001;
+  const sensitiveData = o.dataClass==='Confidential'||o.dataClass==='Restricted';
+  const killCondition = !!o.critFindings || !!o.breach12 || (noCert && sensitiveData);
+  const killReasons=[];
+  if(o.critFindings) killReasons.push('Open critical/high finding, unremediated');
+  if(o.breach12) killReasons.push('Disclosed breach within last 12 months');
+  if(noCert && sensitiveData) killReasons.push('No SOC 2 / ISO 27001 while handling '+o.dataClass+' data');
+
+  let total=Math.round(C1+C2+C3+C4+C5+C6);
+  if(killCondition) total=Math.min(total,40);
+  total=clamp(total,0,100);
+
+  const tier = total>=85?['LOW RISK','low','risk-low']:total>=70?['MODERATE RISK','mod','risk-mod']:
+               total>=55?['ELEVATED RISK','elev','risk-elev']:['HIGH RISK','high','risk-high'];
+  const verdict = killCondition ? ['DECLINE / REMEDIATE FIRST','decline'] :
+                   total>=85?['APPROVE','approve']:total>=70?['APPROVE WITH CONDITIONS','conditions']:
+                   total>=55?['ESCALATE FOR REVIEW','escalate']:['DECLINE / REMEDIATE FIRST','decline'];
+
+  return {C1,C2,C3,C4,C5,C6,total,tier,verdict,killCondition,killReasons,weighted,mAll,sAll,cv,h,L2,L4,L8,All};
+}
+
+function renderVendorCard(name,r){
+  const cats=[['Security Posture Trend','weighted recency of assessment scores',r.C1,25],
+    ['Assessment Consistency','variance across assessment history',r.C2,20],
+    ['Criticality & Data Exposure','data classification · dependency · SPOF',r.C3,15],
+    ['Industry Benchmark','vs. synthetic sector peer average',r.C4,15],
+    ['Contractual Terms','insurance · audit rights · liability · SLA',r.C5,15],
+    ['Certification & Disclosure','SOC 2 · ISO 27001 · findings · breach history',r.C6,10]];
+  return `
+  <div class="board">
+    <div class="hd">${name}</div>
+    <div class="bigscore">
+      <div class="dial ${r.tier[2]}">${r.total}<small>/100</small></div>
+      <div><div class="tier">${r.tier[0]}</div></div>
+    </div>
+    <div class="meter"><i style="width:${r.total}%"></i></div>
+    <div class="verdict ${r.verdict[1]}">${r.killCondition?'⚠ ':'▲ '}${r.verdict[0]}</div>
+    ${r.killCondition?`<div class="flag">CRITICAL FLAG — score capped at 40 regardless of category totals:<br>${r.killReasons.map(x=>'• '+x).join('<br>')}</div>`:''}
+    <div style="margin-top:16px">${cats.map(c=>`
+      <div class="catrow"><div class="nm">${c[0]}<small>${c[1]}</small></div>
+      <div class="catbar"><i style="width:${clamp(c[2]/c[3]*100,0,100)}%"></i></div>
+      <div class="sc">${c[2].toFixed(1)} / ${c[3]}</div></div>`).join('')}
+    </div>
+  </div>
+  <div class="board">
+    <div class="hd">Supporting metrics</div>
+    <div class="grid2">
+      <div class="stat"><div class="k">Weighted Assessment Score</div><div class="v led">${r.weighted.toFixed(1)}</div></div>
+      <div class="stat"><div class="k">All-History Average</div><div class="v">${r.mAll.toFixed(1)}</div></div>
+      <div class="stat"><div class="k">Coefficient of Variation</div><div class="v ${r.cv>.15?'neg':'pos'}">${(r.cv*100).toFixed(0)}%</div></div>
+      <div class="stat"><div class="k">Periods on File</div><div class="v">${r.h.length}</div></div>
+    </div>
+    <div class="note">Security Posture Trend blends the 2/4/8/all-period weighted average of assessment scores (40/30/20/10) with recent-vs-prior trend direction. Assessment Consistency rewards low variance — a vendor that swings wildly between good and bad assessments is a worse bet than one that's steadily mediocre. Certification &amp; Disclosure carries the kill condition: an open critical finding, a recent breach, or missing certification while handling sensitive data caps the entire score at 40, regardless of how strong every other category looks.</div>
+  </div>`;
+}
+
+$('run').addEventListener('click',()=>{
+  const raw=$('history').value.trim();
+  const history=raw.split(/[\s,;]+/).map(Number).filter(v=>!isNaN(v));
+  const out=$('out');
+  if(history.length<2){ out.innerHTML='<div class="empty">NEED AT LEAST 2 ASSESSMENT PERIODS OF HISTORY</div>'; return; }
+  const o={
+    history, sectorCode:$('sector').value, dataClass:$('dataClass').value, criticality:$('criticality').value,
+    spof:+$('spof').value, insurance:+$('insurance').value, audit:+$('audit').value, liabcap:+$('liabcap').value,
+    sla:+$('sla').value, soc2:+$('soc2').value, iso27001:+$('iso27001').value,
+    critFindings:+$('critFindings').value, breach12:+$('breach12').value
+  };
+  const r=scoreVendor(o);
+  const name=$('vSelect').value||'Manual Entry';
+  out.innerHTML=renderVendorCard(name,r)+`
+    <div class="board">
+      <button class="run" id="saveRegBtn">Save to Vendor Register</button>
+      <span class="hint" id="saveRegMsg" style="display:block;margin-top:8px"></span>
+    </div>`;
+  $('saveRegBtn').addEventListener('click',()=>{
+    saveToRegister({name,total:r.total,tier:r.tier[0],verdict:r.verdict[0],killCondition:r.killCondition,date:new Date().toISOString()});
+    $('saveRegMsg').textContent='Saved ✓';
+  });
+});
+
+/* ============ BATCH SCAN ============ */
+function parseCsv(raw){
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return [];
+  let start=0;
+  let cols=['vendor','sector','dataclass','criticality','spof','insurance','audit','liabcap','sla','soc2','iso27001','critfindings','breach12','history'];
+  if(lines[0].toLowerCase().includes('vendor')&&lines[0].toLowerCase().includes('sector')){
+    cols=lines[0].toLowerCase().split(',').map(c=>c.trim()); start=1;
+  }
+  const rows=[];
+  for(let i=start;i<lines.length;i++){
+    const parts=lines[i].split(',').map(c=>c.trim());
+    const row={}; cols.forEach((c,idx)=>row[c]=parts[idx]!==undefined?parts[idx]:'');
+    rows.push(row);
+  }
+  return rows;
+}
+
+$('scoreSlate').addEventListener('click',()=>{
+  const raw=$('batchCsv').value.trim();
+  const out=$('batchOut');
+  if(!raw){ out.innerHTML='<div class="empty">Paste a vendor list first.</div>'; return; }
+  const rows=parseCsv(raw);
+  const results=[]; const errors=[];
+  rows.forEach((row,idx)=>{
+    const name=row.vendor;
+    if(!name){ errors.push(`Row ${idx+1}: missing vendor name`); return; }
+    const base=findVendor(name)||{};
+    const pick=(key,fallback)=>row[key]!==undefined&&row[key]!==''?row[key]:(base[key]!==undefined?base[key]:fallback);
+    const historyRaw=row.history!==undefined&&row.history!==''?row.history:(base.history?base.history.join('|'):'');
+    const history=historyRaw.split(/[|,;]+/).map(Number).filter(v=>!isNaN(v));
+    if(history.length<2){ errors.push(`Row ${idx+1}: ${name} needs 2+ assessment periods (history column, pipe-separated)`); return; }
+    const o={
+      history, sectorCode:pick('sector',''), dataClass:pick('dataclass',''), criticality:pick('criticality',''),
+      spof:+pick('spof',0), insurance:+pick('insurance',0), audit:+pick('audit',0), liabcap:+pick('liabcap',0),
+      sla:+pick('sla',999), soc2:+pick('soc2',0), iso27001:+pick('iso27001',0),
+      critFindings:+pick('critfindings',0), breach12:+pick('breach12',0)
+    };
+    const r=scoreVendor(o);
+    results.push({name,sectorCode:o.sectorCode,r});
+  });
+  results.sort((a,b)=>b.r.total-a.r.total);
+  if(!results.length){ out.innerHTML='<div class="empty">No rows scored.'+(errors.length?'<br><br>'+errors.join('<br>'):'')+'</div>'; return; }
+
+  out.innerHTML=`
+    <div class="board">
+      <div class="hd">RANKED — ${results.length} VENDOR${results.length>1?'S':''} SCORED${errors.length?` · ${errors.length} SKIPPED`:''}</div>
+      <table class="pboard"><thead><tr>
+        <th></th><th>Vendor</th><th>Sector</th><th>Score</th><th>Tier</th><th>Recommendation</th><th></th></tr></thead><tbody>
+        ${results.map((res,i)=>{
+          const r=res.r; const tc=r.tier[1];
+          const sectorName=(SECTORS.find(s=>s.c===res.sectorCode)||{}).n||res.sectorCode||'—';
+          return `<tr>
+            <td>${i+1}</td><td>${res.name}</td><td>${sectorName}</td>
+            <td>${r.total}</td><td><span class="badge ${tc}">${r.tier[0]}</span></td>
+            <td>${r.killCondition?'⚠ ':''}${r.verdict[0]}</td>
+            <td><button class="rmbtn detailBtn" data-idx="${i}" style="border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-family:var(--mono);font-size:10px;cursor:pointer">Details</button></td>
+          </tr>
+          <tr class="detailRow" id="bDetail${i}" style="display:none"><td colspan="7">${renderVendorCard(res.name,r)}</td></tr>`;
+        }).join('')}
+      </tbody></table>
+      ${errors.length?`<div class="note" style="margin-top:12px">Skipped rows:<br>${errors.join('<br>')}</div>`:''}
+    </div>`;
+  document.querySelectorAll('.detailBtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const row=document.getElementById('bDetail'+btn.dataset.idx);
+      const showing=row.style.display!=='none';
+      row.style.display=showing?'none':'table-row';
+      btn.textContent=showing?'Details':'Hide';
+    });
+  });
+});
+
+/* ============ VENDOR REGISTER (localStorage — works when this file is opened directly in a browser) ============ */
+function saveToRegister(entry){
+  const list=JSON.parse(localStorage.getItem('vendorRegister')||'[]');
+  list.unshift(entry);
+  localStorage.setItem('vendorRegister',JSON.stringify(list));
+  renderRegister();
+}
+function renderRegister(){
+  const list=JSON.parse(localStorage.getItem('vendorRegister')||'[]');
+  $('regCount').textContent=list.length?`(${list.length})`:'';
+  const body=$('registerBody');
+  if(!list.length){ body.innerHTML='<div class="empty">No assessments saved yet. Score a vendor, then hit "Save to Vendor Register."</div>'; return; }
+  body.innerHTML=`<table class="pboard"><thead><tr><th>Vendor</th><th>Score</th><th>Tier</th><th>Recommendation</th><th>Saved</th></tr></thead><tbody>
+    ${list.map(e=>`<tr><td>${e.name}</td><td>${e.total}</td><td>${e.tier}</td><td>${e.killCondition?'⚠ ':''}${e.verdict}</td>
+      <td>${new Date(e.date).toLocaleString()}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+$('clearRegister').addEventListener('click',()=>{
+  localStorage.removeItem('vendorRegister'); renderRegister();
+});
+renderRegister();
+
+/* ---- tab switching ---- */
+document.querySelectorAll('.tabbtn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    b.classList.add('active');
+    $('view-'+b.dataset.view).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
